@@ -6,7 +6,7 @@
 ###Beginning
   As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentllessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. What I gathered was the following graph for encryption:
   ```mermaid
-graph TD:
+graph TD
     size--> m
     pt--> m
 
