@@ -81,7 +81,46 @@ graph TD
 
     decrypted_poly --First Index--> return
   ```
-  Yet again, it is complicated, but less so, and where did the random variables from the encryption go? The lack of specific key in this decryption gave me hints that all the random number stuff was just to throw me off. However, what is even more exciting about the decryption function is how simple it is, and how when using menu option 1 I am able to determine the first digit of the encryption output. This gave me an idea, if I set ct1 to 0 then the polymod will be a list of 0's, then if I set all of ct0 to be 2^i then scaled_pt should be 2^i. Now, here comes the crucial part. Decrypted_poly is calcted using the following equation:
-$decrypted\_poly=\frac{(scaled\_pt \cdot t)}{q}\%t$
+  Yet again, it is complicated, but less so, and where did the random variables from the encryption go? The lack of specific key in this decryption gave me hints that all the random number stuff was just to throw me off. However, what is even more exciting about the decryption function is how simple it is, and how when using menu option 1 I am able to determine the first digit of the encryption output. This gave me an idea, if I set ct1 to 0 then the polymod will be a list of 0's, then if I set all of ct0 to be $2^i$ then scaled_pt should be $2^i$. Now, here comes the crucial part. Decrypted_poly is calculated using the following equation:
+  
+$dp=\frac{(spt \cdot t)}{q}\%t$
+
+Which means that if scaled_pt (spt) is some multiple of q then dp = 0. Now, I did this and bruteforced from 0 to 30, but received unexpected (yet later welcomed) results. Running the following function provided this output:
+```
+FINDING Q AND T
+iter:  1        i:  2    True
+iter:  2        i:  4    True
+iter:  3        i:  8    True
+iter:  4        i:  16   True
+iter:  5        i:  32   True
+iter:  6        i:  64   True
+iter:  7        i:  128          True
+iter:  8        i:  256          True
+iter:  9        i:  512          True
+iter:  10       i:  1024         True
+iter:  11       i:  2048         True
+iter:  12       i:  4096         True
+iter:  13       i:  8192         True
+iter:  14       i:  16384        True
+iter:  15       i:  32768        True
+iter:  16       i:  65536        True
+iter:  17       i:  131072       True
+iter:  18       i:  262144       True
+iter:  19       i:  524288       True
+iter:  20       i:  1048576      False
+iter:  21       i:  2097152      False
+iter:  22       i:  4194304      False
+iter:  23       i:  8388608      False
+iter:  24       i:  16777216     False
+iter:  25       i:  33554432     False
+iter:  26       i:  67108864     False
+iter:  27       i:  134217728    False
+iter:  28       i:  268435456    False
+iter:  29       i:  536870912    False
+iter:  30       i:  1073741824   False
+iter:  31       i:  2147483648   False
+iter:  32       i:  4294967296   True
+```
+
 ## Prime Guesser 2
 
