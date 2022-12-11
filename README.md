@@ -12,7 +12,7 @@
     
 When menu option 2 is selected, the user is prompted for the factors of a randomly generated number and if correct the menu repeats itself with a new random number. The random number's factors must be guessed 100 times sequentially with no mistakes to get the flag
 ### The Beginning
-  As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentllessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. There were 6 important global and constant variables that I found immediately:
+  As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentlessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. There were 6 important global and constant variables that I found immediately:
   
 * n [Power of 2]
 * q [Power of 2]
