@@ -126,7 +126,9 @@ iter:  31       i:  2147483648   False
 iter:  32       i:  4294967296   True
 ```
   It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
+  
   Moving on to the next variable, I decided to try and find T. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence (probably backed by math, but I refuse to look at it again). Remember the unusual output from finding Q? Well it turns out that the number of *False* statements is the power of T! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept last night). Regardless, I went about changing the power of T several times and each time this statement held true. Therefore, I did not question anything and just went with it.
+  
   The next variable (and the most difficult) I decided to find was SK. Now SK is different from Q or T in that it is actually a list of values rather than just a single constant, but ignoring this fact for the moment I used a similar technique for finding Q and T but instead made CT1 all 1's and then made CT0 all 0's. The thought behind this was that if I multiply CT1 by SK it might give me some information on SK. However, what I received after printing scaled_pt locally was that it was all 1's. This made some sense considering polymul is basically a convolution followed by a deconvolution, and so I decided to instead just make 1 element of CT1 a 1, the first element. What I received was the following:
   ```
   SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
@@ -218,14 +220,19 @@ SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 
 SCALED_PT:  [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
   ```
   Yes, in reverse. Do not ask me why this works it just did, it came to me in a dream. However, this meant that SK could be found! One small issue though, running the script locally just returned a bunch of 0's. Remeber the modulo function above? Well, numpy.round is called on the result of the entire function and so whatever you input must be greater than 0.5 for oracle (Function that tells you whether the first element is 0 or not) to give you a False return (False -> scaled_pt != 0). So instead of setting to 1, I actually set the value to $Q\*2/3. Why this value you might ask? I do not know, yet again it just felt like a non-problematic value since it was neither Q nor T. Running the program this time resulted in success and I therefore had a method to solve for SK.
+  
   Now, the other remaining variables using in the decrypt function are:
 * size
 * poly_mod
+  
   However, size is easy to get from the number of values in the encrypted CT they provide, and poly_mod can be calculated from this by making an array of the given size and setting the first and last elements to 1. This means that we successfully found all of the values necessary to decrypt any given cypher! Using the given encrypted numbers, the given factor finding function, and our solution to decrypt, we can successfully answers 100 random number factors in a row.
+
 ### Solution
   Now, I will not lie to you when I say that I am new to CTF and unexperienced in pwntools. In fact, I spent ~2-3 hours troubleshooting my pwntools because it kept giving me the wrong answer. After some fun rewriting a few byte conversion methods, automating the menu selection, etc, I had finally made a complete script and it worked! (This was not first try, I was losing years off my life for every failed attempt. I probably won't see 30 at this point). Elated at 7am in the morning I decided it was time to go to sleep; however, perhaps my sanity had decreased to such dangerous levels that I decided to *just take a glance at* Prime Guesser 2 isntead of sleeping.
+
 ## Prime Guesser 2
   Looking at Prime Guesser 2, I was expecting a whole bunch of addition to Prime Guesser 1; however, they actually *took away* functionality and removed menu option 0 from Prime Guesser 1. However, my solution for Prime Guesser 1 never used menu option 0, and so after switching over a few constants and running the solution program I was ecstatic to see that my program for Prime Guesser 1 also solved Prime Guesser 2! Well, that was easy.
+
 ## Conclusion
 This is only my second ever CTF and I have only ever done Crypto challenges (due to inexperience in all the others), but I had a lot of fun with these challenges and would like to thank anyone at KITCTF for putting on the competition.
 
