@@ -10,14 +10,14 @@
     2. Exits the menu and prompts the user for a guess at te factors of a number
 ### The Beginning
   As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentllessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. There were 6 important global and constant variables that I found immediately:
-* n
-* q
-* t
-* poly_mod
+* n [Power of 2]
+* q [Power of 2]
+* t [Power of 2]
+* poly_mod [List of size n, filled with 0's except for the first and last element being 1]
 * pk [List of two lists]
-* sk
+* sk [List of size n of random 1's or 0's]
 
-What I gathered was the following graph for encryption:
+After noticing this, I looked at the encryption function that they were used in and found the following:
   ```mermaid
 graph TD
     classDef default fill:#5978cf,stroke:#000,color:#000
@@ -54,7 +54,7 @@ graph TD
     poly_mod -->ct1
     e2 --> ct1
   ```
-  Now, this looks quite complicated, and that's because it is. However, this is not even the beginning of the pain that I went through, because in order to calculate ct0 and ct1 three important functions were called: polymul, polydiv, and, polyadd. These functions are almost normal in that they are named after polynomial multiplication, polynomial division, and polynomial addition; however, their implementation is not so simple, and what is even more confusing is that polydiv is *called* in polymul and polyadd. Why is this? I have no clue, and I never did find out why. However, what I did start to attempt was writing down the encryption equations to see if they were solvable, and who would have guessed that they weren't. Or atleast, not in a way that didn't involve bruteforcing. Therefore, I will leave it as a mystery of the universe, because shortly after confusing myself with all of this information and more I decided that I would simply take a break and come back later.
+  Now, this looks quite complicated, and that's because it is. However, this is not even the beginning of the pain that I went through, because in order to calculate ct0 and ct1 three important functions were called: polymul, polydiv, and, polyadd. These functions are almost normal in that they are named after polynomial multiplication, polynomial division, and polynomial addition; however, their implementation is not so simple, and what is even more confusing is that polydiv is *called* in polymul and polyadd. Why is this? I have no clue, and I never did find out why. However, what I did start to attempt was writing down the encryption equations to see if they were solvable, and who would have guessed that they weren't (at least not for my measly brain). Or atleast, not in a way that didn't involve bruteforcing. Therefore, I will leave it as a mystery of the universe, because shortly after confusing myself with all of this information (and more), I decided that I would simply take a break and come back later.
 ### The Return
   After having a nice lunch plagued by the thoughts of my inadequency, I returned once more to this CTF but this time with a different approach. What if I don't *have* to understand what's going on in order to solve it? After all, option "1" in the menu allows us to input our own encrypted text and tells us the first digit of the decryption, and so that was where I started anew. Instead of working to understand encryption, why not just use whatever decryption they provide and then solve for its variables? Here is the fun chart I made for the decryption function:
   ```mermaid
@@ -81,6 +81,7 @@ graph TD
 
     decrypted_poly --First Index--> return
   ```
-  Yet again, it is complicated, but less so, and where did the random variables from the encryption go? The lack of specific key in this decryption gave me hints that all the random number stuff was just to throw me off. However, what is even more exciting about the decryption function is how simple it is, and how when using menu option 1 I am able to determine the first digit of the encryption output. This gave me an idea, if I set ct
+  Yet again, it is complicated, but less so, and where did the random variables from the encryption go? The lack of specific key in this decryption gave me hints that all the random number stuff was just to throw me off. However, what is even more exciting about the decryption function is how simple it is, and how when using menu option 1 I am able to determine the first digit of the encryption output. This gave me an idea, if I set ct1 to 0 then the polymod will be a list of 0's, then if I set all of ct0 to be 2^i then scaled_pt should be 2^i. Now, here comes the crucial part. Decrypted_poly is calcted using the following equation:
+$decrypted\_poly=\frac{(scaled\_pt \cdot t)}{q}\%t$
 ## Prime Guesser 2
 
