@@ -85,15 +85,15 @@ graph TD
   
 $dp=\frac{(spt \cdot t)}{q}\%t$
 
-Which means that if scaled_pt (spt) is some multiple of q then dp = 0. Now, I did this and bruteforced from 0 to 30, but received unexpected (yet later welcomed) results. Running the following function provided this output:
+Which means that if scaled_pt (spt) is some multiple of q then dp = 0. Now, I did this and bruteforced from 0 to 30, but received unexpected (yet later welcomed) results. Running the brute force function provided this output:
 ```
 FINDING Q AND T
-iter:  1        i:  2    True
-iter:  2        i:  4    True
-iter:  3        i:  8    True
-iter:  4        i:  16   True
-iter:  5        i:  32   True
-iter:  6        i:  64   True
+iter:  1        i:  2            True
+iter:  2        i:  4            True
+iter:  3        i:  8            True
+iter:  4        i:  16           True
+iter:  5        i:  32           True
+iter:  6        i:  64           True
 iter:  7        i:  128          True
 iter:  8        i:  256          True
 iter:  9        i:  512          True
@@ -121,6 +121,98 @@ iter:  30       i:  1073741824   False
 iter:  31       i:  2147483648   False
 iter:  32       i:  4294967296   True
 ```
+  It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
+  Moving on to the next variable, I decided to try and find T. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence (probably backed by math, but I refuse to look at it again). Remember the unusual output from finding Q? Well it turns out that the number of *False* statements is the power of T! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept last night). Regardless, I went about changing the power of T several times and each time this statement held true. Therefore, I did not question anything and just went with it.
+  The next variable (and the most difficult) I decided to find was SK. Now SK is different from Q or T in that it is actually a list of values rather than just a single constant, but ignoring this fact for the moment I used a similar technique for finding Q and T but instead made CT1 all 1's and then made CT0 all 0's. The thought behind this was that if I multiply CT1 by SK it might give me some information on SK. However, what I received after printing scaled_pt locally was that it was all 1's. This made some sense considering polymul is basically a convolution followed by a deconvolution, and so I decided to instead just make 1 element of CT1 a 1, the first element. What I received was the following:
+  ```
+  SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+  ```
+  Now this looked more promising! Comparing it to the actual value of SK I received:
+  ```
+    SK        [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+    SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+  ```
+  Noticing something fishy? They're the same! Well, almost. Some of the elements of scaled_pt are lost due to the polynomial division. However, this was good news. The next problem was that I was only able to check the first element of scaled_pt and so I needed some way to shift scaled_pt. Knowing that polymul is basically a convolution, I had a suspicion that shifting the index of CT1 that was a 1 would give me this shift. Thus, I decided to write a script that would output to a file this result for every index of i being set to 1. The results may shock you:
+```
+SK:
+[ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
 
+SCALED_PT:
+[ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 ]
+[ 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 ]
+[ 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 ]
+[ 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 ]
+[ 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 ]
+[ 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 ]
+[ 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 ]
+[ 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 ]
+[ 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 ]
+[ 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 ]
+[ 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 ]
+[ 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 ]
+[ 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 ]
+[ 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
+[ 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
+[ 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
+[ 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 ]
+[ 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 ]
+[ 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 ]
+[ 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 ]
+[ 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 ]
+[ 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 ]
+[ 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 ]
+[ 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 ]
+[ 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 ]
+[ 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 ]
+[ 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 ]
+[ 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 ]
+[ 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 ]
+[ 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 ]
+[ 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 ]
+[ 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+```
+  Now, I'm no genius, but just looking at this pattern and seeing the darker (or lighter for you lightmode freaks) streaks along the diagonal told me that my suspicion was correct. So, I wrote a script to get the first element of each of the above arrays and...
+  ```
+SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+SCALED_PT:  [ 0 0 1 0 1 1 1 0 0 0 0 1 0 0 0 1 1 0 1 1 1 0 1 0 0 0 1 0 0 0 0 1 0 1 0 0 1 0 1 0 1 1 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 0 0 0 1 1 0 0 ]
+  ```
+  They don't match? Maybe it just needs to be shifted? I wrote a short program to do this, yet still there were only 32 matching characters for all possible in-order shifts of the scaled_pt. Perhaps in reverse?
+    ```
+SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+SCALED_PT:  [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+  ```
+  
 ## Prime Guesser 2
 
