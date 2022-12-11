@@ -87,7 +87,7 @@ graph TD
   ```
   Yet again, it is complicated, but less so, and where did the random variables from the encryption go? The lack of specific key in this decryption gave me hints that all the random number stuff was just to throw me off. However, what is even more exciting about the decryption function is how simple it is, and how when using menu option 1 I am able to determine the first digit of the encryption output. This gave me an idea, if I set ct1 to 0 then the polymod will be a list of 0's, then if I set all of ct0 to be $2^i$ then scaled_pt should be $2^i$. Now, here comes the crucial part. Decrypted_poly is calculated using the following equation:
   
-$dp=\frac{(spt \cdot t)}{q} mod t$
+$dp=\frac{(spt \cdot t)}{q} mod (t)$
 
 Which means that if scaled_pt (spt) is some multiple of q then dp = 0. Now, I did this and bruteforced from 0 to 30, but received unexpected (yet later welcomed) results. Running the brute force function provided this output:
 ```
