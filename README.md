@@ -234,6 +234,6 @@ However, size is easy to get from the number of values in the encrypted CT they 
   Looking at Prime Guesser 2, I was expecting a whole bunch of addition to Prime Guesser 1; however, they actually *took away* functionality and removed menu option 0 from Prime Guesser 1. However, my solution for Prime Guesser 1 never used menu option 0, and so after switching over a few constants and running the solution program I was ecstatic to see that my program for Prime Guesser 1 also solved Prime Guesser 2! Well, that was easy.
 
 ## Conclusion
-This is only my second ever CTF and I have only ever done Crypto challenges (due to inexperience in all the others), but I had a lot of fun with these challenges and would like to thank anyone at KITCTF for putting on the competition.
+This is only my second ever CTF and I have only ever done Crypto challenges (due to inexperience in all the others), but I had a lot of fun with these challenges and would like to thank everyone at KITCTF for putting on the competition.
 
 'If you have any comments or questions shoot me a message, I am writing this on ~4.5 hours of sleep so there are likely to be misunderstandings'
