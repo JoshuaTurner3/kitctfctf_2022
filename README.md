@@ -5,11 +5,14 @@
 ## Prime Guesser 1
 ### Introduction
   This challenge prompts the user for an option in a menu of three choices (0, 1, 2):
-    0. Prompts the user for a number and encrypts it
-    1. Prompts the user for two parts of an encrypted message and returns whether or not the first digit is 0
-    2. Exits the menu and prompts the user for a guess at te factors of a number
+  
+0. Prompts the user for a number and encrypts it
+1. Prompts the user for two parts of an encrypted message and returns whether or not the first digit is 0
+2. Exits the menu and prompts the user for a guess at te factors of a number
+    
 ### The Beginning
   As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentllessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. There were 6 important global and constant variables that I found immediately:
+  
 * n [Power of 2]
 * q [Power of 2]
 * t [Power of 2]
