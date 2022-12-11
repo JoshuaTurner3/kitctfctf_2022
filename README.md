@@ -16,6 +16,7 @@
 * poly_mod
 * pk [List of two lists]
 * sk
+
 What I gathered was the following graph for encryption:
   ```mermaid
 graph TD
