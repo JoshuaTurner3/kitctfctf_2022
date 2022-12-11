@@ -8,7 +8,7 @@
   
 0. Prompts the user for a number and encrypts it
 1. Prompts the user for two parts of an encrypted message and returns whether or not the first digit is 0
-2. Exits the menu and prompts the user for a guess at te factors of a number
+2. Exits the menu and prompts the user for a guess at the factors of a randomly generated number
     
 ### The Beginning
   As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentllessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. There were 6 important global and constant variables that I found immediately:
@@ -220,7 +220,7 @@ SCALED_PT:  [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 
   Now, the other remaining variables using in the decrypt function are:
 * size
 * poly_mod
-  However, size is easy to get from the number of values in the encrypted CT they provide, and poly_mod can be calculated from this by making an array of the given size and setting the first and last elements to 1. This means that we successfully found all of the values necessary to decrypt any given cypher!
+  However, size is easy to get from the number of values in the encrypted CT they provide, and poly_mod can be calculated from this by making an array of the given size and setting the first and last elements to 1. This means that we successfully found all of the values necessary to decrypt any given cypher! Using the given encrypted numbers, the given factor finding function, and our solution to decrypt, we can successfully answers 100 random number factors in a row.
 ### Solution
   Now, I will not lie to you when I say that I am new to CTF and unexperienced in pwntools. In fact, I spent ~2-3 hours troubleshooting my pwntools because it kept giving me the wrong answer. After some fun rewriting a few byte conversion methods, automating the menu selection, etc, I had finally made a complete script and it worked! (This was not first try, I was losing years off my life for every failed attempt. I probably won't see 30 at this point). Elated at 7am in the morning I decided it was time to go to sleep; however, perhaps my sanity had decreased to such dangerous levels that I decided to *just take a glance at* Prime Guesser 2 isntead of sleeping.
 ## Prime Guesser 2
