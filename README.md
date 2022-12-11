@@ -91,7 +91,7 @@ $dp=\frac{(spt \cdot t)}{q} mod (t)$
 
 Which means that if scaled_pt (spt) is some multiple of q then dp = 0. Now, I did this and bruteforced from 0 to 30, but received unexpected (yet later welcomed) results. Running the brute force function provided this output:
 ```
-FINDING Q AND T
+FINDING Q
 iter:  1        i:  2            True
 iter:  2        i:  4            True
 iter:  3        i:  8            True
