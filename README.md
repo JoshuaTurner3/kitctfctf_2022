@@ -307,7 +307,7 @@ The decrypt function still takes a total of six arguments; however, it only perf
     decrypted_poly --First Index--> return
   ```
 What's even better about the decrypt function is that it does not involve any randomly generated polynomials or weird operations, it is straightforward. Since it was provided to us, and the arguments are those that we know the form of, it made sense to simply try and determine the global variable values to input, and what better way to do this than the provided menu options!
-## Finding n
+### Finding n
 I decided to start with the easiest variable to find first, and unsurprisingly this was $n$. Remember the ciphertext of the randomly generated number? Well, turns out its size is $n$, and so simply doing a little processing to turn the input into a list allows for $n$ to be found. <sub>NOTE: $n$ is often referred to as $size$ within functions.</sub>
 ```python
 def stringToList(str):
@@ -329,7 +329,7 @@ if __name__ == "__main__":
     ...
 ```
 
-## Finding q
+### Finding q
 The menu option that is most intriguing for discovering the server's global encryption variables is Option 1, since it is what actually calls the decryption function. After some intense mathematical thought that Euler and Galois would envy, I recognized a method for finding the $Q$ global variable. In the decrypt function, the known variable $ct_1$ is multiplied by the uknown $sk$ and then subsequently added to the known $ct_0$. Therefore, if I want to know the output of these polynomial operations, it would be best to rid $sk$ from the equation, and what better way to do that then having $ct1$ be the zero polynomial such that their polynomial product is the zero polynomial. Thereafter, since I know $ct_0$, I will know the output of the polynomial operations, $scaledPT$, since the zero polynomial is an additive identity. Using $scaledPT$, $q$ can be found from the result of $decryptedPoly$'s calculation:  
 $decryptedPoly=\frac {scaledPT\cdot t}{q}\hspace{0.3cm} mod \hspace{0.15cm}t$  
 My naieve (but brilliant), thought at the time of this challenge was that if I simply set all elements of $ct_0$ to be the same number and of the form $2^i$ where $i\in\mathbb{Z}^\*$ then I will be able to find %q% when the value of $ct_0$'s elements is equal $q$ since $\frac{q\cdot t}{q} = t = 0 \hspace{0.3cm}mod\hspace{0.15cm}t$. I wrote the following script to accomplish this locally:
@@ -397,7 +397,7 @@ iter:  31       i:  2147483648   False
 iter:  32       i:  4294967296   True
 ```
 It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
-## Finding t
+### Finding t
 Moving on to the next variable, I decided to try and find $t$. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence. Remember the unusual output from finding $q$? Well it turns out that the number of *False* statements is the power of $t$! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept that night). Regardless, I went about changing the power of $t$ several times and each time this statement held true. Therefore, at the time I did not question anything and just went with it; however, after having slept I can now provide an explanation. Consider:  
 $2^P2^T2^-Q=2^(P+T-Q)$  
 where $P$, $T$, %-Q% are the powers of $2$ for $p$, $q$,and $t$.  
@@ -436,7 +436,7 @@ def findQandT(size, maxI):
     return Q, T
 ```
 Here is the updated code for finding both $q$ and $t$
-## Finding sk
+### Finding sk
 The next variable (and the most difficult) I decided to find was $sk$. Now $sk$ is different from $q$ or $t$ in that it is actually a list of values rather than just a single constant, but ignoring this fact for the moment I used a similar technique for finding $q$ and $t$ but instead made $ct_1$ all $1$'s and then made $ct_0$ all $0$'s. The thought behind this was that if I multiply $ct_1$ by $sk$ it might give me some information on $sk$. However, what I received after printing $scaledPT$ locally was that it was all $1$'s. This made some sense considering `polymul` is basically a convolution followed by a deconvolution, and so I decided to instead just make one element of $ct_1$ a $1$, the first element. What I received was the following:
 ```python
   SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
