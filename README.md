@@ -1,5 +1,4 @@
-# Writeup for KITCTF 2022 'Prime Gusser 1' and 'Prime Guesser 2' Challenges
-*Who needs math when you can just guess?*
+#Who needs math when you can just guess?
 
 ## The Challenge
 In this challenge, a connection to the server begins and the user is immediately bombarded with two lists of numbers.
