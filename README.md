@@ -38,7 +38,7 @@ What do you want to encrypt?
 985494,73081,120524,1017959,318357,306968,634004,727418,527224,158725,753912,904952,814567,319821,317262,358766,793112,935679,658026,146112,753484,143127,1048145,902333,762674,563732,761630,638022,1007232,747055,750481,56746,303755,819763,1014514,673684,844447,820666,724373,731507,63228,735920,602701,437707,343858,1024297,334425,261636,519396,422632,520735,977994,770901,822921,367960,566980,402892,774181,811351,317380,480510,360153,895582,331365
 ```
 ### Option 1
-In option 1, the user passes the server two lists of ciphertext, and after decrypting, the `oracle()` function is called which reveals whether the first index (0) of the decryption is equal to 0
+In option 1, the user passes the server two lists of ciphertext, and after decrypting, the `oracle()` function is called which reveals whether the first index (0) of the decryption is equal to $0$.
 ```python
 def oracle(c):
     p = decrypt(sk, n, q, t, poly_mod, c)
