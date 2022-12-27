@@ -553,9 +553,11 @@ def findSK(size, q):
     return sk_guess
 ```
 ## Prime Guesser 1 Solution
-
-
+After finding methods to solve for $n$, $q$, $t$, and $sk$ $polyMod$ could be created in the same manner given in the source code, and as $ct$ was given, all necessary variables for decryption were solvable. Finding the factors of the numbers was possible using the relevant `get_factors(number)` script provided in the source code. Putting all these pieces together in a script and running them locally I found success, even with local variables changed. Thereafter, I ran it on the server, and it worked! I passed $100$ prime guessing trials and received the flag.
 ## Prime Guesser 2 Solution
-
-
+At the time of solving *Prime Guesser 1*, it was ~7am and I had not slept out of frustration with the problem. Nonetheless, I decided to just take a peek at *Prime Guesser 2*, the continuation of *Prime Guesser 1*. I was met with potentially one of the best surprises every, when to my amaze they were basically the same! *Prime Guesser 2* was the same as *Prime Guesser 1* but lacked the encryption menu option (Option 0) and since my solution for *Prime Guesser 1* did not utilize the function at all, my solution worked for both *Prime Guesser 1* and *Prime Guesser 2*! 
 ## Conclusion
+This is only my second ever CTF and I have only ever done Crypto challenges (due to inexperience in all the other categories), but I had a lot of fun with these challenges and would like to thank everyone at KITCTF for putting on the competition. Before I get any hatemail about the horrible state of the solution code, let it be known that I wrote a majority of this after being awake for ~24+ hours and was mentally (and spiritually?) exhausted. I considered improving it to my standards while writing this; however, I think it holds more true to the CTF environment and pressure that I don't. If you read through all of this, then I appreciate your time and support, thank you!
+
+
+<sub>If you have any comments or questions shoot me a message, I am writing this on ~4.5 hours of sleep so there are likely to be misunderstandings</sub>
