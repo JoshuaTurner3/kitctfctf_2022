@@ -562,4 +562,4 @@ At the time of solving *Prime Guesser 1*, it was ~7am and I had not slept out of
 This is only my second ever CTF and I have only ever done Crypto challenges (due to inexperience in all the other categories), but I had a lot of fun with these challenges and would like to thank everyone at KITCTF for putting on the competition. Before I get any hatemail about the horrible state of the solution code, let it be known that I wrote a majority of this after being awake for ~24+ hours and was mentally (and spiritually?) exhausted. I considered improving it to my standards while writing this; however, I think it holds more true to the CTF environment and pressure that I don't. If you read through all of this, then I appreciate your time and support, thank you!
 
 
-<sub>If you have any comments or questions shoot me a message, I am writing this on ~4.5 hours of sleep so there are likely to be misunderstandings</sub>
+<sub>If you have any comments or questions shoot me a message, thanks again for reading!</sub>
