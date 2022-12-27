@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
 ## Finding q
 The menu option that is most intriguing for discovering the server's global encryption variables is Option 1, since it is what actually calls the decryption function. After some intense mathematical thought that Euler and Galois would envy, I recognized a method for finding the $Q$ global variable. In the decrypt function, the known variable $ct_1$ is multiplied by the uknown $sk$ and then subsequently added to the known $ct_0$. Therefore, if I want to know the output of these polynomial operations, it would be best to rid $sk$ from the equation, and what better way to do that then having $ct1$ be the zero polynomial such that their polynomial product is the zero polynomial. Thereafter, since I know $ct_0$, I will know the output of the polynomial operations, $scaledPT$, since the zero polynomial is an additive identity. Using $scaledPT$, $q$ can be found from the result of $decryptedPoly$'s calculation:  
-$decryptedPoly=\frac {scaledPT\cdot t}{q}\hspace{0.3cm} mod \hspace{0.15cm}t$
+$decryptedPoly=\frac {scaledPT\cdot t}{q}\hspace{0.3cm} mod \hspace{0.15cm}t$  
 My naieve (but brilliant), thought at the time of this challenge was that if I simply set all elements of $ct_0$ to be the same number and of the form $2^i$ where $i\in\mathbb{Z}^\*$ then I will be able to find %q% when the value of $ct_0$'s elements is equal $q$ since $\frac{q\cdot t}{q} = t = 0 \hspace{0.3cm}mod\hspace{0.15cm}t$. I wrote the following script to accomplish this locally:
 ```python
 def findQ(size, maxI):
@@ -401,7 +401,8 @@ It started with all True, turned False, and then turned back True again? Unusual
 ## Finding t
 Moving on to the next variable, I decided to try and find $t$. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence. Remember the unusual output from finding $q$? Well it turns out that the number of *False* statements is the power of $t$! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept that night). Regardless, I went about changing the power of $t$ several times and each time this statement held true. Therefore, at the time I did not question anything and just went with it; however, after having slept I can now provide an explanation. Consider:  
 $2^P2^T2^-Q=2^(P+T-Q)$  
-where $P$, $T$, %-Q% are the powers of $2$ for $p$, $q$,and $t$. Now, assuming $Q>T$ then while $P<(Q-T)$ a negative exponent will result, and thus a fraction and since these values are base $2$ the largest fraction possible is $\frac{1}{2}$ which `np.round` evaluates to 0 which causes `oracle` to return $True$. However, once $P>(Q-T)$ a positive exponent will result which causes a value larger than $1$ and a subsequent $False$ from `oracle`. This string of $Falses$ will continue until $P=Q$ in which case the result of the equation is $2^T$ which $mod t$ is $0$.
+where $P$, $T$, %-Q% are the powers of $2$ for $p$, $q$,and $t$.  
+Now, assuming $Q>T$ then while $P<(Q-T)$ a negative exponent will result, and thus a fraction and since these values are base $2$ the largest fraction possible is $\frac{1}{2}$ which `np.round` evaluates to 0 which causes `oracle` to return $True$. However, once $P>(Q-T)$ a positive exponent will result which causes a value larger than $1$ and a subsequent $False$ from `oracle`. This string of $Falses$ will continue until $P=Q$ in which case the result of the equation is $2^T$ which $mod t$ is $0$.
 ```python
 def findQandT(size, maxI):
     falseFound = False
