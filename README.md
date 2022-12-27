@@ -309,7 +309,7 @@ The decrypt function still takes a total of six arguments; however, it only perf
   ```
 What's even better about the decrypt function is that it does not involve any randomly generated polynomials or weird operations, it is straightforward. Since it was provided to us, and the arguments are those that we know the form of, it made sense to simply try and determine the global variable values to input, and what better way to do this than the provided menu options!
 ## Finding n
-I decided to start with the easiest variable to find first, and unsurprisingly this was $n$. Remember the ciphertext of the randomly generated number? Well, turns out its size is $n$, and so simply doing a little processing to turn the input into a list allows for $n$ to be found ($n$ is often referred to as $size$ within functions).
+I decided to start with the easiest variable to find first, and unsurprisingly this was $n$. Remember the ciphertext of the randomly generated number? Well, turns out its size is $n$, and so simply doing a little processing to turn the input into a list allows for $n$ to be found. <sub>NOTE: $n$ is often referred to as $size$ within functions.</sub>
 ```python
 def stringToList(str):
     regex = R"\w*[^[,\s\]]"
@@ -336,24 +336,32 @@ $decryptedPoly=\frac {scaledPT\cdot t}{q}\hspace{0.3cm} mod \hspace{0.15cm}t$
 My naieve (but brilliant), thought at the time of this challenge was that if I simply set all elements of $ct_0$ to be the same number and of the form $2^i$ where $i\in\mathbb{Z}^\*$ then I will be able to find %q% when the value of $ct_0$'s elements is equal $q$ since $\frac{q\cdot t}{q} = t = 0 \hspace{0.3cm}mod\hspace{0.15cm}t$. I wrote the following script to accomplish this locally:
 ```python
 def findQ(size, maxI):
-    print("FINDING Q")
     Q = -1
-    for i in range(1, maxI):
-        qTest = pow(2, i)
+    for i in [2**i for i in range(1, maxI)]:
+        conn.sendline(b'1')
+        conn.recvline()
         ct = []
         ct.append([0])
         ct.append([0] * size)
-        ct[0] = [qTest]*64
-        orcStr = oracle(ct)
+        ct[0] = [i]*64
+        
+        conn.sendline(listToBytes(ct[0]))
+        conn.recvline()
+        conn.sendline(listToBytes(ct[1]))
+        
+        orcStr = conn.recvline(keepends=False).decode('utf-8')
         orc = False
         if orcStr == "True":
             orc = True
-        print("iter:\t",i,"\ti:\t",i,"\t",orc)
+
+        print("iter: ", int(log2(i)), "\ti: ", i, "\t", orc)
         if orc:
-            Q = qTest
+            Q = i
+            break
+        conn.recvline()
     return Q
 ```
-However, the output of this script was confusing since it did not match my expectations at all:
+However, the output of this script was confusing since it did not match my expectations at all, I removed the break statement and let it run through all iterations to see the result, the results are shocking!
 ```
 FINDING Q
 iter:  1        i:  2            True
@@ -391,9 +399,159 @@ iter:  32       i:  4294967296   True
 ```
 It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
 ## Finding t
+Moving on to the next variable, I decided to try and find $t$. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence (probably backed by math, but I refuse to look at it again). Remember the unusual output from finding $q$? Well it turns out that the number of *False* statements is the power of $t$! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept that night). Regardless, I went about changing the power of $t$ several times and each time this statement held true. Therefore, I did not question anything and just went with it. Here is the updated code for finding both $q$ and $t$
+```python
+def findQandT(size, maxI):
+    falseFound = False
+    Q = -1
+    T = -1
+
+    Ti = 0
+    for i in [2**i for i in range(1, maxI)]:
+        conn.sendline(b'1')
+        conn.recvline()
+        ct = []
+        ct.append([0])
+        ct.append([0] * size)
+        ct[0] = [i]*64
+        conn.sendline(listToBytes(ct[0]))
+        conn.recvline()
+        conn.sendline(listToBytes(ct[1]))
+        orcStr = conn.recvline(keepends=False).decode('utf-8')
+        orc = False
+        if orcStr == "True":
+            orc = True
+
+        print("iter: ", int(log2(i)), "\ti: ", i, "\t", orc)
+        if not orc and not falseFound:
+            falseFound = True
+            Ti = int(log2(i))
+        if falseFound and orc:
+            Q = i
+            T = 2**(int(log2(i))-Ti)
+            break
+        conn.recvline()
+    return Q, T
+```
+
 ## Finding sk
+The next variable (and the most difficult) I decided to find was $sk$. Now $sk$ is different from $q$ or $t$ in that it is actually a list of values rather than just a single constant, but ignoring this fact for the moment I used a similar technique for finding $q$ and $t$ but instead made $ct_1$ all $1$'s and then made $ct_0$ all $0$'s. The thought behind this was that if I multiply $ct_1$ by $sk$ it might give me some information on $sk$. However, what I received after printing $scaledPT$ locally was that it was all $1$'s. This made some sense considering `polymul` is basically a convolution followed by a deconvolution, and so I decided to instead just make one element of $ct_1$ a $1$, the first element. What I received was the following:
+```python
+  SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+```
+Now this looked more promising! Comparing it to the actual value of $sk$ I received:
+```python
+    SK        [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+    SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+```
+Noticing something fishy? They're the same! Well, almost. Some of the elements of $scaledPT$ are lost due to the polynomial division. However, this was good news. The next problem was that I was only able to check the first element of $scaledPT$ and so I needed some way to shift $scaledPT$. Knowing that `polymul` is basically a convolution, I had a suspicion that shifting the index of $ct_1$ that was a $1$ would give me this shift. Thus, I decided to write a script that would output to a file this result for every index of $i$ being set to $1$. The results may shock you:
+```python
+SK:
+[ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
 
-
+SCALED_PT:
+[ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 ]
+[ 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 ]
+[ 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 ]
+[ 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 ]
+[ 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
+[ 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
+[ 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 ]
+[ 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 ]
+[ 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 ]
+[ 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 ]
+[ 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 ]
+[ 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 ]
+[ 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 ]
+[ 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
+[ 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
+[ 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 ]
+[ 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 ]
+[ 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
+[ 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
+[ 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
+[ 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 ]
+[ 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 ]
+[ 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 ]
+[ 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 ]
+[ 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 ]
+[ 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 ]
+[ 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 ]
+[ 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 ]
+[ 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 ]
+[ 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 ]
+[ 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
+[ 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 ]
+[ 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 ]
+[ 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 ]
+[ 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 ]
+[ 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
+[ 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 ]
+[ 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+[ 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
+```
+Now, I'm no genius, but just looking at this pattern and seeing the darker (or lighter for you lightmode freaks) streaks along the diagonal told me that my suspicion was correct. So, I wrote a script to get the first element of each of the above arrays and...
+```python
+SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+SCALED_PT:  [ 0 0 1 0 1 1 1 0 0 0 0 1 0 0 0 1 1 0 1 1 1 0 1 0 0 0 1 0 0 0 0 1 0 1 0 0 1 0 1 0 1 1 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 0 0 0 1 1 0 0 ]
+```
+They don't match? Maybe it just needs to be shifted? I wrote a short program to do this, yet still there were only 32 matching characters for all possible in-order shifts of the $scaledPT$. Perhaps in reverse?
+ ```python
+SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+SCALED_PT:  [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
+  ```
+Yes, in reverse. Do not ask me why this works it just did, it came to me in a dream (Edit: I also had to shift it by $1$). However, this meant that $sk$ could be found! One small issue though, running the script locally just returned a bunch of $0$'s. Remeber the modulo function above? Well, `numpy.round` is called on the result of the entire function and so whatever you input must be greater than $0.5$ for `oracle` (Function that tells you whether the first element is $0$ or not) to give you a $False$ return ($False$ -> $scaledPT$ != $0$). So instead of setting to $1$, I actually set the value to $Q\*2/3$. Why this value you might ask? I do not know, it just felt like a non-problematic value since it was neither $q$ nor $t$ and was greater than $\frac{1}{2}t$. Running the program this time resulted in success and I therefore had a method to solve for $sk$! Here is the code:
+```python
+def findSK(size, q):
+    sk_guess_str = ""
+    for i in range(size):
+        conn.sendline(b'1')
+        conn.recvline()
+        ct = []
+        ct.append([0] * size)
+        ct.append([0] * size)
+        ct[1][i] = int(round(q*2/3))
+        conn.sendline(listToBytes(ct[0]))
+        conn.recvline()
+        conn.sendline(listToBytes(ct[1]))
+        orcStr = conn.recvline(keepends=False).decode('utf-8')
+        orc = 1
+        if orcStr == "True":
+            orc = 0
+        print("iter: ", i, "\t", orcStr, "\t", orc)
+        sk_guess_str += str(orc)
+        conn.recvline()
+        ct[1][i] = 0
+    sk_guess_str = sk_guess_str[::-1]
+    sk_guess_str = sk_guess_str[-1] + sk_guess_str[0:-1]
+    sk_guess = [int(i) for i in sk_guess_str]
+    return sk_guess
+```
 ## Prime Guesser 1 Solution
 
 
