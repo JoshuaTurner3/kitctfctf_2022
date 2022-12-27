@@ -1,27 +1,156 @@
-# Writeup for KITCTF 2022 'Prime Guesser 1' and 'Prime Guesser 2' Challenges
-## Introduction
-  This is a brief explanation of the process that I went through in order to solve the 'Prime Guesser 1' and 'Prime Guesser 2' challenges for KITCTF 2022. The explanation is simplified and does not discuss all the different tangents I went down to solve these challenges; however, a majority of the work is preserved in the various files of './crypto_prime_guesser_1/' if you would like to explore those yourself. The three "solution" files are working versions of the code solved local, using process, and using remote. Coincidentally, Prime Guesser 1 & 2 have a solution that is the same between them and so my solution for Prime Guesser 1 allowed me to solve Prime Guesser 2 by changing 4 characters between the "solution_remote.py" of each challenge. I'm new to CTFs and this challenge took me a while but it was fun to get through and rewarding at the end, especially whenever the solution applied to both.
+# Writeup for KITCTF 2022 'Prime Gusser 1' and 'Prime Guesser 2' Challenges
+*Who needs math when you can just guess?*
 
-## Prime Guesser 1
-### Introduction
-  This challenge prompts the user for an option in a menu of three choices (0, 1, 2):
-  
-0. Prompts the user for a number and encrypts it
-1. Prompts the user for two parts of an encrypted message and returns whether or not the first digit is 0
-2. Exits the menu and prompts the user for a guess at the factors of a randomly generated number
-    
-When menu option 2 is selected, the user is prompted for the factors of a randomly generated number and if correct the menu repeats itself with a new random number. The random number's factors must be guessed 100 times sequentially with no mistakes to get the flag
-### The Beginning
-  As with every CTF challenge, I started Prime Guesser 1 by downloading the relevant server file code and reading it relentlessly to understand what was ocurring in the program. Typically, this is pretty straightforward; however, for this challenge there were a lot of components to keep track of and I spent a while trying to understand each indivdual part in excrutiating detail. There were 6 important global and constant variables that I found immediately:
-  
-* n [Power of 2]
-* q [Power of 2]
-* t [Power of 2]
-* poly_mod [List of size n, filled with 0's except for the first and last element being 1]
-* pk [List of two lists]
-* sk [List of size n of random 1's or 0's]
+## The Challenge
+In this challenge, a connection to the server begins and the user is immediately bombarded with two lists of numbers.
+```
+377962,200034,230557,610044,171667,86688,943151,848941,382931,961223,705385,729217,185385,442830,149549,116951,679483,499023,706614,477131,13777,65174,442175,377983,814558,984299,115508,235243,232673,166789,809773,856798,526446,675718,399685,874823,303414,495553,749816,787954,573900,439826,832348,563436,1039490,82861,697843,988802,888514,249047,790497,76606,188407,91832,667104,674584,208913,242545,717322,384867,757719,977174,927325,140953
+245003,564865,423551,794916,1030099,715438,951297,104647,51670,129918,793465,528650,939860,52534,990641,781658,964589,582634,823047,235310,794195,473151,338700,945267,800066,967209,304320,684236,765430,832074,499153,735036,838025,447156,527498,524078,154154,878862,374040,322169,318428,815100,447328,217752,140044,266616,902978,853001,698526,261289,392639,763882,260894,665244,874182,1031487,207823,842837,81426,398136,945841,950746,1025753,214976
+```
+Thereafter the server asks the user what they want. The server does not provide any options for the user; however looking at the code shows that there are three acceptable actions.
+```python
+    while True:
+        choice = int(input("What do you want?\n").strip())
+        if choice == 0:
+            number_input = int(input("What do you want to encrypt?\n").strip(), 10)
+            if number_input > 20 or number_input < 1:
+                print("Thats out of bound")
+            else:
+                outputCipher(smart_enrypt(number_input))
+        elif choice == 1:
+            cipher_input = input("What is the first part of the Cipher?\n").strip()
+            c0 = [int(n, 10) for n in cipher_input.split(",")]
+            cipher_input = input("What is the second part of the Cipher?\n").strip()
+            c1 = [int(n, 10) for n in cipher_input.split(",")]
+            c = (c0, c1)
+            oracle(c)
+        elif choice == 2:
+            break
+```
+### Option 0
+In option 0, the user can give the server a number in the range $[1, 20]$ for the server to encrypt. Once the number is encrypted, its entire output is returned to the user. Now this might initially seem incredibly useful; however, the restriction of input numbers in the range $[1, 20]$ really does not provide too much information. Here is an example output:
+```
+What do you want?
+0
+What do you want to encrypt?
+1
+80332,463780,792058,383640,670434,322669,186514,632518,109001,205518,245703,667775,838329,73292,494435,143250,1017494,875545,706464,46307,370376,760305,1010088,952492,758982,392160,934753,734356,937534,12157,935728,878926,392830,640827,165465,81185,91633,397062,573058,736689,897346,627208,1009605,405665,339680,833796,1032471,218936,475816,835618,1470,298054,793452,881959,562408,328171,506307,756656,844538,503920,725078,565773,1017419,164483
+985494,73081,120524,1017959,318357,306968,634004,727418,527224,158725,753912,904952,814567,319821,317262,358766,793112,935679,658026,146112,753484,143127,1048145,902333,762674,563732,761630,638022,1007232,747055,750481,56746,303755,819763,1014514,673684,844447,820666,724373,731507,63228,735920,602701,437707,343858,1024297,334425,261636,519396,422632,520735,977994,770901,822921,367960,566980,402892,774181,811351,317380,480510,360153,895582,331365
+```
+### Option 1
+In option 1, the user passes the server two lists of ciphertext, and after decrypting, the `oracle()` function is called which reveals whether the first index (0) of the decryption is equal to 0
+```python
+def oracle(c):
+    p = decrypt(sk, n, q, t, poly_mod, c)
+    print(p == 0)
+```
+Here is an example output using the ciphertext from Option 1 above.
+```
+What do you want?
+1
+What is the first part of the Cipher?
+80332,463780,792058,383640,670434,322669,186514,632518,109001,205518,245703,667775,838329,73292,494435,143250,1017494,875545,706464,46307,370376,760305,1010088,952492,758982,392160,934753,734356,937534,12157,935728,878926,392830,640827,165465,81185,91633,397062,573058,736689,897346,627208,1009605,405665,339680,833796,1032471,218936,475816,835618,1470,298054,793452,881959,562408,328171,506307,756656,844538,503920,725078,565773,1017419,164483
+What is the second part of the Cipher?
+985494,73081,120524,1017959,318357,306968,634004,727418,527224,158725,753912,904952,814567,319821,317262,358766,793112,935679,658026,146112,753484,143127,1048145,902333,762674,563732,761630,638022,1007232,747055,750481,56746,303755,819763,1014514,673684,844447,820666,724373,731507,63228,735920,602701,437707,343858,1024297,334425,261636,519396,422632,520735,977994,770901,822921,367960,566980,402892,774181,811351,317380,480510,360153,895582,331365
+False
+```
+### Option 2
+In option 2, the user simply breaks form the menu option loop and is then subsequently asked for the factors of a randomly generated prime number whose ciphertext was provided prior. Here is an example output:
+```
+What do you want?
+2
+What are the factors?
+3,5,7
+Failed
+```
+## Overall Program Function
+In order to get the flag from the server, the prime factors of the randomly generated number must be guessed correctly 100 times in a row. Menu options 0 and 1 above can be repeated as many times as the user would like within each loop to gather any necessary information. Here is a graph of the process:
+```mermaid
+flowchart LR
+    classDef default fill:#5978cf,stroke:#000,color:#000
+    classDef green fill:#64c452,stroke:#000,color:#000
+    classDef red fill:#a52a2a,stroke:#000,color:#000
+    classDef purple fill:#68228b,stroke:#000,color:#FFF
+    classDef orange fill:#cc5500,stroke:#000,color:#FFF
+    classDef white fill:#FFF,stroke:#000,color:#000
 
-After noticing this, I looked at the encryption function that they were used in and found the following:
+    linkStyle default fill: none, stroke: white: 
+
+    i("i=0"):::orange
+    Q("i<100?"):::purple
+    M("Prompt menu"):::purple
+    A("Prompt number")
+    B("Prompt ciphertexts")
+    C("Exit menu")
+    ENC("Encrypt"):::orange
+    DEC("Decrypt"):::orange
+    ORC("Oracle"):::orange
+    G("Guess primes"):::purple
+    E("Program exits"):::red
+    F("Print flag"):::green
+    IP("i++"):::white
+
+    i-->Q
+    Q--"True"-->M
+    Q--"False"-->F
+
+    M--"Option 0"-->A
+    M--"Option 1"-->B
+    M--"Option 2"-->C
+
+    A-->ENC-->M
+    B-->DEC-->ORC-->M
+    C-->G
+
+    G--"Incorrect"-->E
+    G--"Correct"-->IP-->Q
+```
+## Encryption Analysis
+Now that the program's flow is understood, we must delve deeper. Since this is a cryptography challenge we need to actually look at what's going on behind the scenes, and if we are lucky there will be a simple way to break the encryption and decrypt the random number's ciphertext each round. However, before the exploration into the encrpytion and decryption functions may begin, there are some global variables that must be covered
+```python
+# polynomial modulus degree
+n = 2**6 # EXAMPLE !!! ON THE SERVER ARE OTHER NUMBERS
+# ciphertext modulus
+q = 2**20 # EXAMPLE !!! ON THE SERVER ARE OTHER NUMBERS
+# plaintext modulus
+t = 2**10 # EXAMPLE !!! ON THE SERVER ARE OTHER NUMBERS
+# polynomial modulus
+poly_mod = np.array([1] + [0] * (n - 1) + [1])
+pk, sk = keygen(n, q, poly_mod)
+```
+I've gone through the painstaking trouble of politely labelling each variable up above, and the creators of the challenge were also so helpful in informing us that none of these variables are the same as on the server. However, they did provide a general formula for their creation; that is, $n$, $q$, and $t$ were all of the form $2^i$ where $i\in\mathbb{Z}^*$ and surely $i$ cannot be *too* big? or else this program would be unmanageable. Nonetheless, while the form of these variables is known, they are still to be considered unknown. What's perhaps more interesting than these three variables is $polymod$ which takes the form:
+```python
+array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+```
+What significance does this have? I did not know at this point, but nonetheless it is fully determined by the value of $n$, which is good since that means that finding $n$ gives the value of two global variables used in encryption. The final two global variables are $pk$ and $sk$ which are generated by a function named `keygen` that accepts $n$, $q$, and $polymod$ as arguments.
+```python
+def keygen(size, modulus, poly_mod):
+    sk = gen_binary_poly(size)
+    a = gen_uniform_poly(size, modulus)
+    e = gen_normal_poly(size)
+    b = polyadd(polymul(-a, sk, modulus, poly_mod), -e, modulus, poly_mod)
+    return (b, a), sk
+```
+Now this is the point in the cryptography analysis that randomness joins the party and really puts a damper on my mood. Randomness is required in ciphers to make them *confusing* and *complex*, and it sure does make my life difficult in CTFs. Anyway, `keygen` calls four unqiue separate functions: `gen_binary_poly`, `gen_uniform_poly`, `gen_normal_poly`, and `polyadd`. The code for these is short and sweet (though clustered), so let's take a look.
+```python
+def polyadd(x, y, modulus, poly_mod):
+    return np.int64(np.round(poly.polydiv(poly.polyadd(x, y) % modulus, poly_mod)[1] % modulus))
+```
+```python
+def gen_binary_poly(size):
+    return np.random.randint(0, 2, size, dtype=np.int64)
+```
+```python
+def gen_uniform_poly(size, modulus):
+    return np.random.randint(0, modulus, size, dtype=np.int64)
+```
+```python
+def gen_normal_poly(size):
+    return np.int64(np.random.normal(0, 2, size=size))
+```
+Let's start with `polyadd`, it's pretty simple if you don't look to much into it (I did and wouldn't reccommend it) and essentually just adds two polynomials 
+### Encryption Function Analysis
+The encryption function accepts three parameters: `pk, size, q, t, poly_mod, pt`
   ```mermaid
 graph TD
     classDef default fill:#5978cf,stroke:#000,color:#000
@@ -58,182 +187,29 @@ graph TD
     poly_mod -->ct1
     e2 --> ct1
   ```
-  Now, this looks quite complicated, and that's because it is. However, this is not even the beginning of the pain that I went through, because in order to calculate ct0 and ct1 three important functions were called: polymul, polydiv, and, polyadd. These functions are almost normal in that they are named after polynomial multiplication, polynomial division, and polynomial addition; however, their implementation is not so simple, and what is even more confusing is that polydiv is *called* in polymul and polyadd. Why is this? I have no clue, and I never did find out why. However, what I did start to attempt was writing down the encryption equations to see if they were solvable, and who would have guessed that they weren't (at least not for my measly brain). Or atleast, not in a way that didn't involve bruteforcing. Therefore, I will leave it as a mystery of the universe, because shortly after confusing myself with all of this information (and more), I decided that I would simply take a break and come back later.
-### The Return
-  After having a nice lunch plagued by the thoughts of my inadequency, I returned once more to this CTF but this time with a different approach. What if I don't *have* to understand what's going on in order to solve it? After all, option "1" in the menu allows us to input our own encrypted text and tells us the first digit of the decryption, and so what if I can get some information from this? That was where I started anew. Instead of working to understand encryption, why not just use whatever decryption they provide and then solve for its variables? Here is the fun chart I made for the decryption function:
-  ```mermaid
-  graph TD
-    classDef default fill:#5978cf,stroke:#000,color:#000
-    classDef input fill:#64c452,stroke:#000,color:#000
-    classDef function fill:#c97038,stroke:#000,color:#000
+## gen_binary_poly
+## gen_uniform_poly
+## gen_normal_poly
 
-    sk:::input --> polymul
-    ct1:::input --> polymul
-    q:::input --> polymul
-    poly_mod:::input --> polymul:::function
+### Decryption Function Analysis
 
-    polymul --> polyadd:::function
-    ct0:::input --> polyadd
-    q:::input ---> polyadd
-    poly_mod:::input --> polyadd
 
-    polyadd --> scaled_pt
+### Polynomials
 
-    t:::input --> decrypted_poly
-    q:::input --> decrypted_poly
-    scaled_pt --> decrypted_poly
 
-    decrypted_poly --First Index--> return
-  ```
-  Yet again, it is complicated, but less so, and where did the random variables from the encryption go? The lack of specific key in this decryption gave me hints that all the random number stuff was just to throw me off. However, what is even more exciting about the decryption function is how simple it is, and how when using menu option 1 I am able to determine the first digit of the encryption output. This gave me an idea, if I set ct1 to 0 then the polymod will be a list of 0's, then if I set all of ct0 to be $2^i$ then scaled_pt should be $2^i$. Now, here comes the crucial part. Decrypted_poly is calculated using the following equation:
-  
-$dp=\frac{(spt \cdot t)}{q} mod (t)$
+## Finding Q
 
-Which means that if scaled_pt (spt) is some multiple of q then dp = 0. Now, I did this and bruteforced from 0 to 30, but received unexpected (yet later welcomed) results. Running the brute force function provided this output:
-```
-FINDING Q
-iter:  1        i:  2            True
-iter:  2        i:  4            True
-iter:  3        i:  8            True
-iter:  4        i:  16           True
-iter:  5        i:  32           True
-iter:  6        i:  64           True
-iter:  7        i:  128          True
-iter:  8        i:  256          True
-iter:  9        i:  512          True
-iter:  10       i:  1024         True
-iter:  11       i:  2048         True
-iter:  12       i:  4096         True
-iter:  13       i:  8192         True
-iter:  14       i:  16384        True
-iter:  15       i:  32768        True
-iter:  16       i:  65536        True
-iter:  17       i:  131072       True
-iter:  18       i:  262144       True
-iter:  19       i:  524288       True
-iter:  20       i:  1048576      False
-iter:  21       i:  2097152      False
-iter:  22       i:  4194304      False
-iter:  23       i:  8388608      False
-iter:  24       i:  16777216     False
-iter:  25       i:  33554432     False
-iter:  26       i:  67108864     False
-iter:  27       i:  134217728    False
-iter:  28       i:  268435456    False
-iter:  29       i:  536870912    False
-iter:  30       i:  1073741824   False
-iter:  31       i:  2147483648   False
-iter:  32       i:  4294967296   True
-```
-  It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
-  
-  Moving on to the next variable, I decided to try and find T. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence (probably backed by math, but I refuse to look at it again). Remember the unusual output from finding Q? Well it turns out that the number of *False* statements is the power of T! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept last night). Regardless, I went about changing the power of T several times and each time this statement held true. Therefore, I did not question anything and just went with it.
-  
-  The next variable (and the most difficult) I decided to find was SK. Now SK is different from Q or T in that it is actually a list of values rather than just a single constant, but ignoring this fact for the moment I used a similar technique for finding Q and T but instead made CT1 all 1's and then made CT0 all 0's. The thought behind this was that if I multiply CT1 by SK it might give me some information on SK. However, what I received after printing scaled_pt locally was that it was all 1's. This made some sense considering polymul is basically a convolution followed by a deconvolution, and so I decided to instead just make 1 element of CT1 a 1, the first element. What I received was the following:
-  ```
-  SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-  ```
-  Now this looked more promising! Comparing it to the actual value of SK I received:
-  ```
-    SK        [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
-    SCALED_PT [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-  ```
-  Noticing something fishy? They're the same! Well, almost. Some of the elements of scaled_pt are lost due to the polynomial division. However, this was good news. The next problem was that I was only able to check the first element of scaled_pt and so I needed some way to shift scaled_pt. Knowing that polymul is basically a convolution, I had a suspicion that shifting the index of CT1 that was a 1 would give me this shift. Thus, I decided to write a script that would output to a file this result for every index of i being set to 1. The results may shock you:
-```
-SK:
-[ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
 
-SCALED_PT:
-[ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-[ 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-[ 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-[ 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 ]
-[ 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 ]
-[ 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 ]
-[ 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 ]
-[ 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
-[ 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
-[ 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
-[ 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
-[ 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 ]
-[ 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
-[ 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
-[ 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
-[ 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 ]
-[ 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 ]
-[ 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 ]
-[ 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 ]
-[ 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 ]
-[ 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 ]
-[ 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 ]
-[ 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 ]
-[ 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
-[ 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
-[ 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
-[ 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 ]
-[ 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
-[ 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
-[ 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
-[ 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
-[ 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 ]
-[ 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 ]
-[ 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 ]
-[ 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
-[ 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
-[ 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 ]
-[ 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 ]
-[ 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 ]
-[ 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 ]
-[ 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 ]
-[ 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 ]
-[ 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 ]
-[ 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 ]
-[ 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 ]
-[ 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 ]
-[ 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 ]
-[ 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
-[ 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
-[ 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
-[ 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
-[ 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
-[ 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 0 1 ]
-[ 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 ]
-[ 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 1 ]
-[ 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 1 ]
-[ 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 0 0 0 1 ]
-[ 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
-[ 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
-[ 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
-[ 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 1 ]
-[ 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 0 0 1 ]
-[ 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-[ 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 ]
-```
-  Now, I'm no genius, but just looking at this pattern and seeing the darker (or lighter for you lightmode freaks) streaks along the diagonal told me that my suspicion was correct. So, I wrote a script to get the first element of each of the above arrays and...
-  ```
-SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
-SCALED_PT:  [ 0 0 1 0 1 1 1 0 0 0 0 1 0 0 0 1 1 0 1 1 1 0 1 0 0 0 1 0 0 0 0 1 0 1 0 0 1 0 1 0 1 1 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 0 0 0 1 1 0 0 ]
-  ```
-  They don't match? Maybe it just needs to be shifted? I wrote a short program to do this, yet still there were only 32 matching characters for all possible in-order shifts of the scaled_pt. Perhaps in reverse?
- ```
-SK:         [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
-SCALED_PT:  [ 0 0 1 1 0 0 0 1 1 1 0 1 0 0 0 0 0 1 0 1 1 1 1 1 0 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 1 0 1 1 1 0 1 1 0 0 0 1 0 0 0 0 1 1 1 0 1 0 0 ]
-  ```
-  Yes, in reverse. Do not ask me why this works it just did, it came to me in a dream (Edit: I also had to shift it by 1). However, this meant that SK could be found! One small issue though, running the script locally just returned a bunch of 0's. Remeber the modulo function above? Well, numpy.round is called on the result of the entire function and so whatever you input must be greater than 0.5 for oracle (Function that tells you whether the first element is 0 or not) to give you a False return (False -> scaled_pt != 0). So instead of setting to 1, I actually set the value to $Q\*2/3$. Why this value you might ask? I do not know, it just felt like a non-problematic value since it was neither Q nor T. Running the program this time resulted in success and I therefore had a method to solve for SK.
-  
-  Now, the other remaining variables using in the decrypt function are:
-* size
-* poly_mod
-  
-However, size is easy to get from the number of values in the encrypted CT they provide, and poly_mod can be calculated from this by making an array of the given size and setting the first and last elements to 1. This means that we successfully found all of the values necessary to decrypt any given cypher! Using the given encrypted numbers, the given factor finding function, and our solution to decrypt, we can successfully answer 100 random number factors in a row.
+## Finding T
 
-### Solution
-  Now, I will not lie to you when I say that I am new to CTF and unexperienced in pwntools. In fact, I spent ~2-3 hours troubleshooting my pwntools because it kept giving me the wrong answer. After some fun rewriting a few byte conversion methods, automating the menu selection, etc, I had finally made a complete script and it worked! (This was not first try, I was losing years off my life for every failed attempt. I probably won't see 30 at this point). Elated at 7am in the morning I decided it was time to go to sleep; however, perhaps my sanity had decreased to such dangerous levels that I decided to *just take a glance at* Prime Guesser 2 instead of sleeping.
 
-## Prime Guesser 2
-  Looking at Prime Guesser 2, I was expecting a whole bunch of addition to Prime Guesser 1; however, they actually *took away* functionality and removed menu option 0 from Prime Guesser 1. However, my solution for Prime Guesser 1 never used menu option 0, and so after switching over a few constants and running the solution program I was ecstatic to see that my program for Prime Guesser 1 also solved Prime Guesser 2! Well, that was easy.
+## Finding SK
+
+
+## Prime Guesser 1 Solution
+
+
+## Prime Guesser 2 Solution
+
 
 ## Conclusion
-This is only my second ever CTF and I have only ever done Crypto challenges (due to inexperience in all the others), but I had a lot of fun with these challenges and would like to thank everyone at KITCTF for putting on the competition.
-
-'If you have any comments or questions shoot me a message, I am writing this on ~4.5 hours of sleep so there are likely to be misunderstandings'
