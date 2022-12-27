@@ -137,7 +137,7 @@ Now this is the point in the cryptography analysis that randomness joins the par
 def polyadd(x, y, modulus, poly_mod):
     return np.int64(np.round(poly.polydiv(poly.polyadd(x, y) % modulus, poly_mod)[1] % modulus))
 ```
-Let's start with `polyadd`, it's pretty simple if you don't look to much into it (I did and wouldn't reccommend it) and essentially adds two polynomials $x$ and $y$ that are represented by the list of their coefficients and then divides them by $polymod$ and takes the remainder. For example, let's look at equations of degree 4:  
+Let's start with `polyadd`, it's pretty simple if you don't look to much into it (I did and wouldn't reccommend it) and essentially adds two polynomials $x$ and $y$ that are represented by the list of their coefficients and then divides them by $polyMod$ and takes the remainder. For example, let's look at equations of degree 4:  
   
 $f(x)=1x^4-27x^3+14x^2+0x+120$  
 $g(x)=1x^4+3x^3+4x^2-11x-30$  
@@ -149,9 +149,9 @@ f         = array([1, -27, 14,   0, 120])
 g         = array([1,   3,  4, -11, -30])
 poly_mod  = array([1, 0, 0, 0, 0, 1])
 ```
-Calling polymod with these two equations would first add them:  
+Calling `polyadd` with these two equations would first add them:  
 $f(x)+g(x)=2x^4-24x^3+18x^2-11x+90$  
-Subsequently, they would be divided by polymod:  
+Subsequently, they would be divided by $polyMod$:  
 $\frac{f(x)+g(x)}{polymod(x)}=\frac{2x^4-24x^3+18x^2-11x+90}{1x^5+0x^4+0x^3+0x^2+0x+1}$  
 This polynomial division would then yield a divided portion and a remainder. The remainder is taken as it is guaranteed to have a maximum degree of $4$; hence why $polyMod$ was named the *polynomial modulus* above.
 ### polymul
@@ -399,7 +399,9 @@ iter:  32       i:  4294967296   True
 ```
 It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
 ## Finding t
-Moving on to the next variable, I decided to try and find $t$. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence (probably backed by math, but I refuse to look at it again). Remember the unusual output from finding $q$? Well it turns out that the number of *False* statements is the power of $t$! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept that night). Regardless, I went about changing the power of $t$ several times and each time this statement held true. Therefore, I did not question anything and just went with it. Here is the updated code for finding both $q$ and $t$
+Moving on to the next variable, I decided to try and find $t$. Now, I don't know what happened during some of this period, I was losing my sanity more and more with each run of my script; however, I stumbled upon a fun little conincidence. Remember the unusual output from finding $q$? Well it turns out that the number of *False* statements is the power of $t$! How did I figure this out? I don't know, it came to me in a dream (not really, I barely slept that night). Regardless, I went about changing the power of $t$ several times and each time this statement held true. Therefore, at the time I did not question anything and just went with it; however, after having slept I can now provide an explanation. Consider:  
+$2^P2^T2^-Q=2^(P+T-Q)$  
+where $P$, $T$, %-Q% are the powers of $2$ for $p$, $q$,and $t$. Now, assuming $Q>T$ then while $P<Q-T$ a negative exponent will result, and thus a fraction and since these values are base $2$ the largest fraction possible is $\frac{1}{2}$ which `np.round` evaluates to 0 which causes `oracle` to return $True$. However, once $P>Q-T$ a positive exponent will result which causes a value larger than $1$ and a subsequent $False$ form `oracle`. This string of $Falses$ will continue until $P=Q$ in which case the result of the equation is $2^T$ which $mod t$ is $0$.
 ```python
 def findQandT(size, maxI):
     falseFound = False
@@ -433,6 +435,7 @@ def findQandT(size, maxI):
         conn.recvline()
     return Q, T
 ```
+Here is the updated code for finding both $q$ and $t$
 ## Finding sk
 The next variable (and the most difficult) I decided to find was $sk$. Now $sk$ is different from $q$ or $t$ in that it is actually a list of values rather than just a single constant, but ignoring this fact for the moment I used a similar technique for finding $q$ and $t$ but instead made $ct_1$ all $1$'s and then made $ct_0$ all $0$'s. The thought behind this was that if I multiply $ct_1$ by $sk$ it might give me some information on $sk$. However, what I received after printing $scaledPT$ locally was that it was all $1$'s. This made some sense considering `polymul` is basically a convolution followed by a deconvolution, and so I decided to instead just make one element of $ct_1$ a $1$, the first element. What I received was the following:
 ```python
