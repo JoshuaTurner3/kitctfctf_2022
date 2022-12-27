@@ -132,26 +132,105 @@ def keygen(size, modulus, poly_mod):
     return (b, a), sk
 ```
 Now this is the point in the cryptography analysis that randomness joins the party and really puts a damper on my mood. Randomness is required in ciphers to make them *confusing* and *complex*, and it sure does make my life difficult in CTFs. Anyway, `keygen` calls four unqiue separate functions: `gen_binary_poly`, `gen_uniform_poly`, `gen_normal_poly`, and `polyadd`. The code for these is short and sweet (though clustered), so let's take a look.
+### polyadd
 ```python
 def polyadd(x, y, modulus, poly_mod):
     return np.int64(np.round(poly.polydiv(poly.polyadd(x, y) % modulus, poly_mod)[1] % modulus))
 ```
+Let's start with `polyadd`, it's pretty simple if you don't look to much into it (I did and wouldn't reccommend it) and essentially adds two polynomials $x$ and $y$ that are represented by the list of their coefficients and then divides them by $polymod$ and takes the remainder. For example, let's look at equations of degree 4:  
+  
+$f(x)=1x^4-27x^3+14x^2+0x+120$  
+$g(x)=1x^4+3x^3+4x^2-11x-30$  
+$polymod(x)=1x^5+0x^4+0x^3+0x^2+0x+1$
+  
+Each of these polynomials would have a list representation of:
+```python
+f         = array([1, -27, 14,   0, 120])
+g         = array([1,   3,  4, -11, -30])
+poly_mod  = array([1, 0, 0, 0, 0, 1])
+```
+Calling polymod with these two equations would first add them:  
+$f(x)+g(x)=2x^4-24x^3+18x^2-11x+90$  
+Subsequently, they would be divided by polymod:  
+$\frac{f(x)+g(x)}{polymod(x)}=\frac{2x^4-24x^3+18x^2-11x+90}{1x^5+0x^4+0x^3+0x^2+0x+1}$  
+This polynomial division would then yield a divided portion and a remainder. The remainder is taken as it is guaranteed to have a maximum degree of $4$; hence why $polymod$ was named the *polynomial modulus* above.
+### polymul
+```python
+def polymul(x, y, modulus, poly_mod):
+    return np.int64(
+        np.round(poly.polydiv(poly.polymul(x, y) % modulus, poly_mod)[1] % modulus)
+    )
+```
+This function is not actually called by `keygen` at all, but its fitting to discuss it after `polyadd` since they are essentially the same thing (and this is used in the encryption function). I'm not going to delve into great detail here, but it functions exactly the same as `polyadd`, except that instead of polynomial addition, polynomial multiplication (or convolution) occurs!
+### gen_binary_poly
 ```python
 def gen_binary_poly(size):
     return np.random.randint(0, 2, size, dtype=np.int64)
 ```
+The name of this function is quite straightforward, it creates a polynomial list of coefficients that are either $0$ or $1$. For example, a calling `gen_binary_poly(5)` would yield:  
+```
+array([1, 0, 1, 1, 1])
+```
+Which is equivalent to the polynomial:  
+$f(x)=1x^4+0x^3+1x^2+1x+1$  
+### gen_uniform_poly
 ```python
 def gen_uniform_poly(size, modulus):
     return np.random.randint(0, modulus, size, dtype=np.int64)
 ```
+This function acts much the same as `gen_binary_poly` but instead of giving the generated polynomial coefficients of $1$ or $0$, it gives the generated polynomial coefficients based on a uniform distribution; that is, a random distribution. The result of `gen_uniform_poly(5, 10)` could be something like:
+```python
+array([3, 6, 5, 1, 9])
+```
+Which is equivalent to the polynomial:  
+$f(x)=3x^4+6x^3+5x^2+1x+9$  
+### gen_normal_poly
 ```python
 def gen_normal_poly(size):
     return np.int64(np.random.normal(0, 2, size=size))
 ```
-Let's start with `polyadd`, it's pretty simple if you don't look to much into it (I did and wouldn't reccommend it) and essentually just adds two polynomials 
+Just as with `gen_uniform_poly` and `gen_binary_poly`, this function generates a list of coefficients of a random polynomial but samples them from a normal distribution with $0$ as the center and $2$ and $-2$ being the minimum and maximum. The result of `gen_normal_poly(5)` could be something like:
+```python
+array([-2, 1, 2, 0, 0])
+```
+Which is equivalent to the polynomial:  
+$f(x)=-2x^4+1x^3+2x^2+0x+0$  
 ### Encryption Function Analysis
-The encryption function accepts three parameters: `pk, size, q, t, poly_mod, pt`
-  ```mermaid
+Now that all these pesky helper functions have been discussed, we can finally talk about the encryption function! The encryption function accepts six arguments: $pk$, $size$, $q$, $t$, $polymod$, and $pt$
+```python
+def encrypt(pk, size, q, t, poly_mod, pt):
+    m = np.array([pt] + [0] * (size - 1), dtype=np.int64) % t
+    delta = q // t
+    scaled_m = delta * m  % q
+    e1 = gen_normal_poly(size)
+    e2 = gen_normal_poly(size)
+    u = gen_binary_poly(size)
+    ct0 = polyadd(
+            polyadd(
+                polymul(pk[0], u, q, poly_mod),
+                e1, q, poly_mod),
+            scaled_m, q, poly_mod
+        )
+    ct1 = polyadd(
+            polymul(pk[1], u, q, poly_mod),
+            e2, q, poly_mod
+        )
+    return (ct0, ct1)
+```
+There is a lot going on in this function, and so to lessen your confusion (and totally not mine), I've put in hours of hard labour to create this graph:
+ ```mermaid
+ graph TD
+    classDef default fill:#5978cf,stroke:#000,color:#000
+    classDef input fill:#64c452,stroke:#000,color:#000
+    classDef function fill:#c97038,stroke:#000,color:#000
+
+
+    variables
+    functions:::function
+    A("function arguments"):::input
+ ```  
+ 
+ ```mermaid
 graph TD
     classDef default fill:#5978cf,stroke:#000,color:#000
     classDef input fill:#64c452,stroke:#000,color:#000
@@ -187,23 +266,132 @@ graph TD
     poly_mod -->ct1
     e2 --> ct1
   ```
-## gen_binary_poly
-## gen_uniform_poly
-## gen_normal_poly
-
+It's real pretty isn't it? While it is pretty scattered and complex, it does give us two key insights:
+1. The number encrypted, $pt$, is manipulated into $m$, then $scaled m$, and then ends up somewhere within $ct0$
+2. I do not know what is going on.
+  
+In light of this second insight, I thought it was best to simply ignore the encrypt function for a while and move onto decryption since that is what we are *really* interested in.
 ### Decryption Function Analysis
+Now, the decryption function is interesting because it is *far* simpler than the encryption function, what this tells me is that a bunch of the information in the encrypt function is only there to confuse us.
+```python
+def decrypt(sk, size, q, t, poly_mod, ct):
+    scaled_pt = polyadd(
+            polymul(ct[1], sk, q, poly_mod),
+            ct[0], q, poly_mod
+        )
+    decrypted_poly = np.round(scaled_pt * t / q) % t
+    return int(decrypted_poly[0])
+```  
+The decrypt function still takes a total of six arguments; however, it only performs 2 polynomial operations: `polymul` and `polyadd`. Here is another chart for you to stare at.
+```mermaid
+  graph LR
+    classDef default fill:#5978cf,stroke:#000,color:#000
+    classDef input fill:#64c452,stroke:#000,color:#000
+    classDef function fill:#c97038,stroke:#000,color:#000
 
+    sk:::input --> polymul
+    ct1:::input --> polymul
+    q:::input --> polymul
+    poly_mod:::input --> polymul:::function
 
-### Polynomials
+    polymul --> polyadd:::function
+    ct0:::input --> polyadd
+    q:::input ---> polyadd
+    poly_mod:::input --> polyadd
 
+    polyadd --> scaled_pt
 
-## Finding Q
+    t:::input --> decrypted_poly
+    q:::input --> decrypted_poly
+    scaled_pt --> decrypted_poly
 
+    decrypted_poly --First Index--> return
+  ```
+What's even better about the decrypt function is that it does not involve any randomly generated polynomials or weird operations, it is straightforward. Since it was provided to us, and the arguments are those that we know the form of, it made sense to simply try and determine the global variable values to input, and what better way to do this than the provided menu options!
+## Finding n
+I decided to start with the easiest variable to find first, and unsurprisingly this was $n$. Remember the ciphertext of the randomly generated number? Well, turns out its size is $n$, and so simply doing a little processing to turn the input into a list allows for $n$ to be found ($n$ is often referred to as $size$ within functions).
+```python
+def stringToList(str):
+    regex = R"\w*[^[,\s\]]"
+    matches = re.findall(regex, str)
+    num = [int(m) for m in matches]
+    return num
+```
+```python
+if __name__ == "__main__":
+    # CURRENT ENCRYPTED NUMBER
+    ct0_str = conn.recvline(keepends=False).decode('utf-8')
+    ct1_str = conn.recvline(keepends=False).decode('utf-8')
+    ct0 = stringToList(ct0_str)
+    ct1 = stringToList(ct1_str)
+    ct = [ct0, ct1]
 
-## Finding T
+    n = len(ct1)
+    ...
+```
 
-
-## Finding SK
+## Finding q
+The menu option that is most intriguing for discovering the server's global encryption variables is Option 1, since it is what actually calls the decryption function. After some intense mathematical thought that Euler and Galois would envy, I recognized a method for finding the $Q$ global variable. In the decrypt function, the known variable $ct_1$ is multiplied by the uknown $sk$ and then subsequently added to the known $ct_0$. Therefore, if I want to know the output of these polynomial operations, it would be best to rid $sk$ from the equation, and what better way to do that then having $ct1$ be the zero polynomial such that their polynomial product is the zero polynomial. Thereafter, since I know $ct_0$, I will know the output of the polynomial operations, $scaledPT$, since the zero polynomial is an additive identity. Using $scaledPT$, $q$ can be found from the result of $decryptedPoly$'s calculation:  
+$decryptedPoly=\frac {scaledPT\cdot t}{q}\hspace{0.3cm} mod \hspace{0.15cm}t$
+My naieve (but brilliant), thought at the time of this challenge was that if I simply set all elements of $ct_0$ to be the same number and of the form $2^i$ where $i\in\mathbb{Z}^\*$ then I will be able to find %q% when the value of $ct_0$'s elements is equal $q$ since $\frac{q\cdot t}{q} = t = 0 \hspace{0.3cm}mod\hspace{0.15cm}t$. I wrote the following script to accomplish this locally:
+```python
+def findQ(size, maxI):
+    print("FINDING Q")
+    Q = -1
+    for i in range(1, maxI):
+        qTest = pow(2, i)
+        ct = []
+        ct.append([0])
+        ct.append([0] * size)
+        ct[0] = [qTest]*64
+        orcStr = oracle(ct)
+        orc = False
+        if orcStr == "True":
+            orc = True
+        print("iter:\t",i,"\ti:\t",i,"\t",orc)
+        if orc:
+            Q = qTest
+    return Q
+```
+However, the output of this script was confusing since it did not match my expectations at all:
+```
+FINDING Q
+iter:  1        i:  2            True
+iter:  2        i:  4            True
+iter:  3        i:  8            True
+iter:  4        i:  16           True
+iter:  5        i:  32           True
+iter:  6        i:  64           True
+iter:  7        i:  128          True
+iter:  8        i:  256          True
+iter:  9        i:  512          True
+iter:  10       i:  1024         True
+iter:  11       i:  2048         True
+iter:  12       i:  4096         True
+iter:  13       i:  8192         True
+iter:  14       i:  16384        True
+iter:  15       i:  32768        True
+iter:  16       i:  65536        True
+iter:  17       i:  131072       True
+iter:  18       i:  262144       True
+iter:  19       i:  524288       True
+iter:  20       i:  1048576      False
+iter:  21       i:  2097152      False
+iter:  22       i:  4194304      False
+iter:  23       i:  8388608      False
+iter:  24       i:  16777216     False
+iter:  25       i:  33554432     False
+iter:  26       i:  67108864     False
+iter:  27       i:  134217728    False
+iter:  28       i:  268435456    False
+iter:  29       i:  536870912    False
+iter:  30       i:  1073741824   False
+iter:  31       i:  2147483648   False
+iter:  32       i:  4294967296   True
+```
+It started with all True, turned False, and then turned back True again? Unusual, but expected considering I did some horrible math with the decrypted_poly equation. Nonetheless, for a while I just circumvented this by setting a flag to wait for the first False and then break on the next True statement and return i, and after some tests locally this successfully found Q everytime!
+## Finding t
+## Finding sk
 
 
 ## Prime Guesser 1 Solution
