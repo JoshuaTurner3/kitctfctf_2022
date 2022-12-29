@@ -54,7 +54,7 @@ What is the second part of the Cipher?
 False
 ```
 ### Option 2
-In option 2, the user simply breaks form the menu option loop and is then subsequently asked for the factors of a randomly generated prime number whose ciphertext was provided prior. Here is an example output:
+In option 2, the user simply breaks from the menu option loop and is then subsequently asked for the factors of a randomly generated prime number whose ciphertext was provided prior. Here is an example output:
 ```
 What do you want?
 2
