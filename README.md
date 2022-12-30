@@ -166,7 +166,7 @@ This function is not actually called by `keygen` at all, but its fitting to disc
 def gen_binary_poly(size):
     return np.random.randint(0, 2, size, dtype=np.int64)
 ```
-The name of this function is quite straightforward, it creates a polynomial list of coefficients that are either $0$ or $1$. For example, a calling `gen_binary_poly(5)` would yield:  
+The name of this function is quite straightforward, it creates a polynomial list of coefficients that are either $0$ or $1$. For example, calling `gen_binary_poly(5)` would yield:  
 ```
 array([1, 0, 1, 1, 1])
 ```
